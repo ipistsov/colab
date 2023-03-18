@@ -1,0 +1,58 @@
+# Preparation
+
+! git clone https://github.com/igogy/Law1.git
+!pip install llama-index
+!pip install langchain
+
+# Define functions
+
+from llama_index import SimpleDirectoryReader, GPTListIndex, readers, GPTSimpleVectorIndex, LLMPredictor, PromptHelper
+from langchain import OpenAI
+import sys
+import os
+from IPython.display import Markdown, display
+
+# ADJUST PARAMETERS OF THE MODEL HERE
+
+def construct_index(directory_path):
+    # set maximum input size
+    max_input_size = 4096
+    # set number of output tokens
+    num_outputs = 2000
+    # set maximum chunk overlap
+    max_chunk_overlap = 20
+    # set chunk size limit
+    chunk_size_limit = 600 
+
+    # define LLM
+    llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="gpt-4-0314", max_tokens=num_outputs))
+    prompt_helper = PromptHelper(max_input_size, num_outputs, max_chunk_overlap, chunk_size_limit=chunk_size_limit)
+ 
+    documents = SimpleDirectoryReader(directory_path).load_data()
+    
+    index = GPTSimpleVectorIndex(
+        documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper
+    )
+
+    index.save_to_disk('index.json')
+
+    return index
+
+def ask_ai():
+    index = GPTSimpleVectorIndex.load_from_disk('index.json')
+    while True: 
+        query = input("What do you want to ask? ")
+        response = index.query(query, response_mode="compact")
+        display(Markdown(f"Response: <b>{response.response}</b>"))
+  
+
+# Set OpenAI API Key
+os.environ["OPENAI_API_KEY"] = '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'
+
+# Construct an index
+# Now we are ready to construct the index. This will take every file in the folder 'data', split it into chunks, and embed it with OpenAI's embeddings API.
+# Notice: running this code will cost you credits on your OpenAPI account ($0.02 for every 1,000 tokens). If you've just set up your account, the free credits that you have should be more than enough for this experiment.
+construct_index("Law1")
+
+# Ask questions
+ask_ai()
